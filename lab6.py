@@ -3,15 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def update_q_table(q_table, state, action, reward, next_state, alpha, gamma):
-    current_q = q_table[state, action]
+    state = int(state)  # Convert state to integer
+    action = int(action)  # Convert action to integer
+
+    current_q = q_table[int(state), int(action)]
     next_max_q = np.max(q_table[next_state])
     new_q = (1 - alpha) * current_q + alpha * (reward + gamma * next_max_q)
-    q_table[state, action] = new_q
+    q_table[int(state), int(action)] = new_q 
 
 def train(env, q_table, alpha, gamma, epsilon, num_episodes):
     rewards = []
     for episode in range(num_episodes):
-        state = env.reset()
+        state = env.reset()[0]
         total_reward = 0
         done = False
         
@@ -21,7 +24,7 @@ def train(env, q_table, alpha, gamma, epsilon, num_episodes):
             else:
                 action = np.argmax(q_table[state])
             
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, hh, _ = env.step(action)
             update_q_table(q_table, state, action, reward, next_state, alpha, gamma)
             
             state = next_state
