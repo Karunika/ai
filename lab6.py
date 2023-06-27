@@ -1,15 +1,7 @@
 import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
-
-def update_q_table(q_table, state, action, reward, next_state, alpha, gamma):
-    state = int(state)  # Convert state to integer
-    action = int(action)  # Convert action to integer
-
-    current_q = q_table[int(state), int(action)]
-    next_max_q = np.max(q_table[next_state])
-    new_q = (1 - alpha) * current_q + alpha * (reward + gamma * next_max_q)
-    q_table[int(state), int(action)] = new_q 
+from gymnasium.envs.toy_text.frozen_lake import generate_random_map
 
 def train(env, q_table, alpha, gamma, epsilon, num_episodes):
     rewards = []
@@ -17,6 +9,7 @@ def train(env, q_table, alpha, gamma, epsilon, num_episodes):
         state = env.reset()[0]
         total_reward = 0
         done = False
+
         
         while not done:
             if np.random.uniform() < epsilon:
@@ -24,33 +17,41 @@ def train(env, q_table, alpha, gamma, epsilon, num_episodes):
             else:
                 action = np.argmax(q_table[state])
             
-            next_state, reward, done, hh, _ = env.step(action)
-            update_q_table(q_table, state, action, reward, next_state, alpha, gamma)
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
+
+            current_q = q_table[int(state), int(action)]
+            next_max_q = np.max(q_table[next_state])
+            new_q = (1 - alpha) * current_q + alpha * (reward + gamma * next_max_q)
+            q_table[state, action] = new_q 
             
             state = next_state
             total_reward += reward
         
         rewards.append(total_reward)
-        epsilon *= 0.99  # Decrease exploration rate
+        epsilon = max(epsilon - epsilon_decay, 0)  # Decrease exploration rate
         
         if (episode + 1) % 100 == 0:
             print(f"Episode {episode + 1}/{num_episodes}")
+
+    print(q_table)
     
     return rewards
 
 def visualize_solution(env, q_table):
-    state = env.reset()
+    state, _ = env.reset()
     done = False
     
     while not done:
         action = np.argmax(q_table[state])
-        state, _, done, _ = env.step(action)
+        state, _, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
         env.render()
     
     env.close()
 
 # Initialize environment
-env = gym.make("FrozenLake-v1", map_name="8x8")
+env = gym.make("FrozenLake-v1", is_slippery=False, desc=generate_random_map(size=8, p=0.90, seed=123), render_mode="human")
 
 # Initialize Q-table
 num_states = env.observation_space.n
@@ -58,10 +59,11 @@ num_actions = env.action_space.n
 q_table = np.zeros((num_states, num_actions))
 
 # Hyperparameters
-alpha = 0.1
-gamma = 0.99
+alpha = 0.5
+gamma = 0.85
 epsilon = 1.0
-num_episodes = 1000
+epsilon_decay = 0.0001
+num_episodes = 1
 
 # Train the agent
 rewards = train(env, q_table, alpha, gamma, epsilon, num_episodes)
